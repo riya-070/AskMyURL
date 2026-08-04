@@ -12,6 +12,7 @@ def download_youtube_audio(url: str) -> str:
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_path,
+        "extractor_args": {"youtube": {"player_client": ["android"]}},
         "ffmpeg_location": r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin",
         "postprocessors": [
             {
