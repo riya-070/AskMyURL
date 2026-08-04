@@ -1,5 +1,7 @@
 import yt_dlp
 from pydub import AudioSegment
+AudioSegment.converter = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe"
+AudioSegment.ffprobe = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe"
 import os
 
 DOWNLOAD_DIR = 'downloades'
