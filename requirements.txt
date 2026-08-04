@@ -48,4 +48,4 @@ langchain-chroma>=0.1.0
 python-docx>=1.1.0
 fastapi>=0.110.0
 uvicorn>=0.29.0
-audioop-lts>=0.2.0
+
