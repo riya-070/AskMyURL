@@ -1,19 +1,33 @@
 import yt_dlp
 from pydub import AudioSegment
-AudioSegment.converter = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffmpeg.exe"
-AudioSegment.ffprobe = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin\ffprobe.exe"
 import os
+import shutil
+
+# Works on your PC (uses local ffmpeg folder) AND on Streamlit Cloud
+# (falls back to the ffmpeg installed via packages.txt automatically).
+FFMPEG_LOCAL_PATH = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin"
+
+if os.path.exists(FFMPEG_LOCAL_PATH):
+    FFMPEG_LOCATION = FFMPEG_LOCAL_PATH
+    AudioSegment.converter = os.path.join(FFMPEG_LOCAL_PATH, "ffmpeg.exe")
+    AudioSegment.ffprobe = os.path.join(FFMPEG_LOCAL_PATH, "ffprobe.exe")
+else:
+    FFMPEG_LOCATION = shutil.which("ffmpeg")  # e.g. /usr/bin/ffmpeg on the cloud
 
 DOWNLOAD_DIR = 'downloades'
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": output_path,
-        "extractor_args": {"youtube": {"player_client": ["android"]}},
-        "ffmpeg_location": r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin",
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        },
+        "ffmpeg_location": FFMPEG_LOCATION,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -27,6 +41,7 @@ def download_youtube_audio(url: str) -> str:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info).replace(".webm", ".wav").replace(".m4a", ".wav")
     return filename
+
 
 def convert_to_wav(input_path: str) -> str:
     """Convert any audio/video file to WAV format using pydub."""
@@ -65,6 +80,3 @@ def process_input(source: str) -> list:
 if __name__ == "__main__":
     result = process_input("https://youtu.be/-0uJMbWOjEc?si=Qd6KKF1SvN-22dm_")
     print(result)
-
-
-
