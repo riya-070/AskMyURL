@@ -568,6 +568,7 @@ with in_col1:
         placeholder="🔗 Paste a YouTube URL or local file path…",
         label_visibility="collapsed",
     )
+    uploaded_file = st.file_uploader("Or upload an audio/video file", type=["mp3", "wav", "mp4", "m4a", "webm"])
 with in_col2:
     language = st.selectbox("Language", ["english", "hinglish"], index=0, label_visibility="collapsed")
 with in_col3:
@@ -577,8 +578,8 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Run Pipeline ────────────────────────────────────────────────────────────────
 if run_btn:
-    if not source.strip():
-        st.error("Please enter a YouTube URL or file path.")
+    if not source.strip() and uploaded_file is None:
+        st.error("Please enter a YouTube URL or upload a file.")
     else:
         st.session_state.pipeline_done = False
         st.session_state.result = None
@@ -594,7 +595,14 @@ if run_btn:
 
         try:
             update_step("audio", "active")
-            chunks = process_input(source)
+            if uploaded_file is not None:
+                os.makedirs("downloades", exist_ok=True)
+                temp_path = os.path.join("downloades", uploaded_file.name)
+                with open(temp_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                chunks = process_input(temp_path)
+            else:
+                chunks = process_input(source)
             update_step("audio", "done")
 
             update_step("transcript", "active")
@@ -639,7 +647,6 @@ if run_btn:
                 if st.session_state.pipeline_steps.get(k) == "active":
                     st.session_state.pipeline_steps[k] = "pending"
             live_area.error(f"❌ Error: {e}")
-
 # ── Results ──────────────────────────────────────────────────────────────────────
 if st.session_state.result:
     r = st.session_state.result
