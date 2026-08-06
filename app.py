@@ -1,39 +1,12 @@
 import streamlit as st
 import time
 import os
+from dotenv import load_dotenv
+load_dotenv()   # MUST be before any core/ imports
+
 if "COOKIES_TXT_CONTENT" in os.environ:
     with open("cookies.txt", "w") as f:
-        f.write(os.environ["# Netscape HTTP Cookie File
-# https://curl.haxx.se/rfc/cookie_spec.html
-# This is a generated file! Do not edit.
-
-.youtube.com	TRUE	/	TRUE	1800891165	LOGIN_INFO	AFmmF2swRQIhAOAoyoRQc_jndqEbcDkQfC5L8A5iBxjZXdEpxxeTaFWrAiA00HDnY1Lcv0eFdicaptBf2mFhXhHV0rhbbYvo5coyVg:QUQ3MjNmek56MzMwLV9jb1BSR0VCb0tqWkxjT283T1Q2TWJ6emx2VjhDbG5lM29RZF9NTFZnaDJlSG54dXY2akpxVVhuMHBWWXZPZ2syN2RKdmdDQmVYeWpYVkxNdUV0Sk9jeDhVQkRzZkxvdmFSNWRJTzF4cVlTTEZLQ0cxeTFFNldCWEtNR3pYbGhfdTFKZWI0dXM4SG95SDJJbXlIMW5R
-.youtube.com	TRUE	/	TRUE	1791197602	__Secure-BUCKET	COIC
-.youtube.com	TRUE	/	FALSE	1818881189	SID	g.a000Agn2nlHVXcBwuAMP4kcRGd7kL5LtcYFPsj5Q_MWJukl0cIHjxeHmqiC0gMz-AyjeBzeLFgACgYKARMSARASFQHGX2MiEDlKkKU4YEFosRpIyOZNBhoVAUF8yKofpwIopiOzDLbsd_RMg6VX0076
-.youtube.com	TRUE	/	TRUE	1818881189	__Secure-1PSID	g.a000Agn2nlHVXcBwuAMP4kcRGd7kL5LtcYFPsj5Q_MWJukl0cIHj2sR3yP_-mVRE7Revs8GZRwACgYKAaUSARASFQHGX2MilrLoh5_n-1gTg8LEzfR18BoVAUF8yKrQh-3qV1UfhqbgMrludGQt0076
-.youtube.com	TRUE	/	TRUE	1818881189	__Secure-3PSID	g.a000Agn2nlHVXcBwuAMP4kcRGd7kL5LtcYFPsj5Q_MWJukl0cIHjp7yykb4qG096buLtJcrKlgACgYKAWISARASFQHGX2MifPOb11YPIhKCV1e2s9BIpRoVAUF8yKqtXBCYHZNEIPedgUYJ5bRQ0076
-.youtube.com	TRUE	/	FALSE	1818881189	HSID	AIhvCUuKzYXy_mL7Z
-.youtube.com	TRUE	/	TRUE	1818881189	SSID	AMFoejLg8B0C8YWjO
-.youtube.com	TRUE	/	FALSE	1818881189	APISID	gJEgs1t5frpYKAqP/AYJ2_c1xQPWnQDeym
-.youtube.com	TRUE	/	TRUE	1818881189	SAPISID	clP6b6PJfm4FT9kJ/A1wBAAHvbj8AW0Q2n
-.youtube.com	TRUE	/	TRUE	1818881189	__Secure-1PAPISID	clP6b6PJfm4FT9kJ/A1wBAAHvbj8AW0Q2n
-.youtube.com	TRUE	/	TRUE	1818881189	__Secure-3PAPISID	clP6b6PJfm4FT9kJ/A1wBAAHvbj8AW0Q2n
-.youtube.com	TRUE	/	TRUE	1820552841	PREF	f4=4000000&tz=Asia.Calcutta&f7=100&f5=20000&f6=400
-.youtube.com	TRUE	/	TRUE	1785993460	CONSISTENCY	AHDYFaFpWMlMLY9V3a9JBbqEkWJ6K16BTPU-BCkFeQxJZ76PIpIBBngsjY-HdYiCfU15gJnlUWX7g3VJQ4-vkU1X-fnJ_5LuwThFBgu9_yK0NwmjiTq9iC3VUqljZ-svAWebZ-PxndM9C0Vx7tUBsXh7
-.youtube.com	TRUE	/	TRUE	1817529038	__Secure-1PSIDTS	sidts-CjEBPWEu2Zk7JRHTs5GKrF7EqpqHQgyjXRZ2BFmrAVr8ox0D4UTPvFjIXc6HK7EGO8gkEAA
-.youtube.com	TRUE	/	TRUE	1817529038	__Secure-3PSIDTS	sidts-CjEBPWEu2Zk7JRHTs5GKrF7EqpqHQgyjXRZ2BFmrAVr8ox0D4UTPvFjIXc6HK7EGO8gkEAA
-.youtube.com	TRUE	/	FALSE	1817529038	SIDCC	AKEyXzUgsNGuBNEPGtbWtt_j3fw2Wb3eQscuokYX3rRc-RtbE5PkOAgcr2pudAQrIAl96xOSeCE
-.youtube.com	TRUE	/	TRUE	1817529038	__Secure-1PSIDCC	AKEyXzV58MLqlT9cCNvY41dVFt1qVhYmnGwRbrQ8jMjgtDe1S6tFTYv4XUCXQSZrlsCqMQuhu7w
-.youtube.com	TRUE	/	TRUE	1817529038	__Secure-3PSIDCC	AKEyXzVCh-_J072LRQ4gOuMVPKtxY_eHD3Le765e7hkQ5hREh1e9VHiLhNANtTacUNuei1TpDg
-.youtube.com	TRUE	/	TRUE	1801544773	VISITOR_INFO1_LIVE	HApvhewIWW8
-.youtube.com	TRUE	/	TRUE	1801544773	VISITOR_PRIVACY_METADATA	CgJJThIEGgAgMg%3D%3D
-.youtube.com	TRUE	/	TRUE	1801481257	__Secure-YNID	20.YT=qa9Z_NVd1tZD35Xl01vf4jocXRUmU96U4jM2nFGLISD-678ZGTGxGUxJ4r4owMpMkVrPR1KSi9SvbWQuQimtx27KTGmzdsHXsy6rci_d46Uxc-ziX2aY1qt6BdDNkDB5JqQPOoP9M4jKbGKt-2kGm04n1Dbf66iCFO7pbekP4rLUnLekPfZbupcX2x71uHEV-Ecjhm952i9LKORWn6i3Fqz75PwFV0VK2eYkDnCHnoY2PU6jYF5mBkU3kElV9eI8n4RsU02HP5URVHRtiwJwGmJKbI-KzqPhi8KUBhjAB9sjSCUmiA-NXYWY7RlFRM9bALPJt8jb5VbzEn47h3MgnQ
-.youtube.com	TRUE	/	TRUE	0	YSC	vkn1Nui-RBc
-.youtube.com	TRUE	/	TRUE	1801481257	__Secure-ROLLOUT_TOKEN	CJLZivCKxuCDMhCOzOyqgM-RAxiAvcj3sImWAw%3D%3D
-"])
-from dotenv import load_dotenv
-
-load_dotenv()
+        f.write(os.environ["COOKIES_TXT_CONTENT"])
 from utils.audio_processor import process_input
 from core.transcriber import transcribe_all
 from core.summarizer import summarize, generate_title
