@@ -76,7 +76,29 @@ def process_input(source: str) -> list:
     chunks = chunk_audio(wav_path)
     print(f"Audio ready — {len(chunks)} chunk(s) created.")
     return chunks
+from youtube_transcript_api import YouTubeTranscriptApi
+import re
 
+
+def extract_video_id(url: str) -> str:
+    match = re.search(r"(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})", url)
+    if not match:
+        raise ValueError("Could not extract YouTube video ID from URL")
+    return match.group(1)
+
+
+def get_youtube_transcript_direct(url: str) -> str:
+    """Fetch YouTube's own captions directly. Free, works from any server
+    (including cloud-hosted apps), since it's not the download endpoint
+    that YouTube blocks — just the subtitle data."""
+    video_id = extract_video_id(url)
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(
+            video_id, languages=["en", "en-US", "en-GB", "hi"]
+        )
+    except Exception as e:
+        raise RuntimeError(f"No captions available for this video: {e}")
+    return " ".join(entry["text"] for entry in transcript_list)
 
 if __name__ == "__main__":
     result = process_input("https://youtu.be/-0uJMbWOjEc?si=Qd6KKF1SvN-22dm_")

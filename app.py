@@ -611,27 +611,26 @@ if run_btn:
                 render_progress_bar(st.session_state.pipeline_steps)
 
         try:
-            update_step("audio", "active")
             if uploaded_file is not None:
+                update_step("audio", "active")
                 os.makedirs("downloades", exist_ok=True)
                 temp_path = os.path.join("downloades", uploaded_file.name)
                 with open(temp_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 chunks = process_input(temp_path)
-            elif RELAY_URL:
-                try:
-                    chunks = process_youtube_via_relay(source)
-                except Exception as relay_err:
-                    raise RuntimeError(
-                        f"Home relay unreachable (is your PC/ngrok running?): {relay_err}"
-                    )
-            else:
-                chunks = process_input(source)
-            update_step("audio", "done")
+                update_step("audio", "done")
 
-            update_step("transcript", "active")
-            transcript = transcribe_all(chunks, language)
-            update_step("transcript", "done")
+                update_step("transcript", "active")
+                transcript = transcribe_all(chunks, language)
+                update_step("transcript", "done")
+            else:
+                from utils.audio_processor import get_youtube_transcript_direct
+                update_step("audio", "active")
+                update_step("audio", "done")
+
+                update_step("transcript", "active")
+                transcript = get_youtube_transcript_direct(source)
+                update_step("transcript", "done")
 
             update_step("title", "active")
             title = generate_title(transcript)
