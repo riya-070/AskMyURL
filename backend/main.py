@@ -128,3 +128,17 @@ def delete_session(session_id: str):
         del SESSIONS[session_id]
         return {"deleted": session_id}
     raise HTTPException(status_code=404, detail="Session not found.")
+
+    from fastapi.responses import FileResponse
+
+@app.post("/download-youtube")
+def download_youtube(req: AnalyzeRequest):
+    """Downloads YouTube audio using THIS machine's IP (your home PC),
+    so it bypasses YouTube's cloud-IP blocking. Called remotely by the
+    deployed Streamlit app via the ngrok tunnel."""
+    from utils.audio_processor import download_youtube_audio
+    try:
+        wav_path = download_youtube_audio(req.source)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return FileResponse(wav_path, media_type="audio/wav", filename=os.path.basename(wav_path))

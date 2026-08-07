@@ -14,7 +14,24 @@ from core.extractor import extract_action_items, extract_key_decisions, extract_
 from core.rag_engine import build_rag_chain, ask_question
 from utils.export_utils import export_to_docx, export_to_pdf
 
+RELAY_URL = os.getenv("RELAY_URL")  # set this only on Streamlit Cloud, points to your ngrok URL
 
+def process_youtube_via_relay(url: str) -> list:
+    """Sends the YouTube URL to your home PC (via ngrok) to download,
+    since your home IP isn't blocked by YouTube like the cloud server is."""
+    import requests
+    from utils.audio_processor import chunk_audio
+    resp = requests.post(
+        f"{RELAY_URL}/download-youtube",
+        json={"source": url, "language": "english"},
+        timeout=300,
+    )
+    resp.raise_for_status()
+    os.makedirs("downloades", exist_ok=True)
+    wav_path = os.path.join("downloades", "relay_download.wav")
+    with open(wav_path, "wb") as f:
+        f.write(resp.content)
+    return chunk_audio(wav_path)
 # ─── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="AskMyURL",
@@ -601,6 +618,13 @@ if run_btn:
                 with open(temp_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
                 chunks = process_input(temp_path)
+            elif RELAY_URL:
+                try:
+                    chunks = process_youtube_via_relay(source)
+                except Exception as relay_err:
+                    raise RuntimeError(
+                        f"Home relay unreachable (is your PC/ngrok running?): {relay_err}"
+                    )
             else:
                 chunks = process_input(source)
             update_step("audio", "done")
