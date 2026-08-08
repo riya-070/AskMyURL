@@ -2,9 +2,9 @@ import yt_dlp
 from pydub import AudioSegment
 import os
 import shutil
+import re
+from youtube_transcript_api import YouTubeTranscriptApi
 
-# Works on your PC (uses local ffmpeg folder) AND on Streamlit Cloud
-# (falls back to the ffmpeg installed via packages.txt automatically).
 FFMPEG_LOCAL_PATH = r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-essentials_build\bin"
 
 if os.path.exists(FFMPEG_LOCAL_PATH):
@@ -12,11 +12,14 @@ if os.path.exists(FFMPEG_LOCAL_PATH):
     AudioSegment.converter = os.path.join(FFMPEG_LOCAL_PATH, "ffmpeg.exe")
     AudioSegment.ffprobe = os.path.join(FFMPEG_LOCAL_PATH, "ffprobe.exe")
 else:
-    FFMPEG_LOCATION = shutil.which("ffmpeg")  # e.g. /usr/bin/ffmpeg on the cloud
+    FFMPEG_LOCATION = shutil.which("ffmpeg")
 
 DOWNLOAD_DIR = 'downloades'
-COOKIES_PATH = "cookies.txt"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
+COOKIES_PATH = "cookies.txt"
+
+
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
     ydl_opts = {
@@ -41,14 +44,36 @@ def download_youtube_audio(url: str) -> str:
         base, _ = os.path.splitext(ydl.prepare_filename(info))
         filename = base + ".wav"
     return filename
-    
+
+
+def extract_video_id(url: str) -> str:
+    match = re.search(r"(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})", url)
+    if not match:
+        raise ValueError("Could not extract YouTube video ID from URL")
+    return match.group(1)
+
+
+def get_youtube_transcript_direct(url: str) -> str:
+    """Fetch YouTube's own captions directly. Free, and generally avoids
+    the aggressive blocking that the full audio-download endpoint hits
+    on cloud IPs (though not guaranteed immune)."""
+    video_id = extract_video_id(url)
+    try:
+        ytt = YouTubeTranscriptApi()
+        fetched = ytt.fetch(video_id, languages=["en", "en-US", "en-GB", "hi"])
+        entries = fetched.to_raw_data() if hasattr(fetched, "to_raw_data") else fetched
+        return " ".join(
+            e["text"] if isinstance(e, dict) else e.text for e in entries
+        )
+    except Exception as e:
+        raise RuntimeError(f"No captions available for this video: {e}")
 
 
 def convert_to_wav(input_path: str) -> str:
     """Convert any audio/video file to WAV format using pydub."""
     output_path = os.path.splitext(input_path)[0] + "_converted.wav"
     audio = AudioSegment.from_file(input_path)
-    audio = audio.set_channels(1).set_frame_rate(16000)  # 16khz
+    audio = audio.set_channels(1).set_frame_rate(16000)
     audio.export(output_path, format="wav")
     return output_path
 
@@ -76,30 +101,8 @@ def process_input(source: str) -> list:
     chunks = chunk_audio(wav_path)
     print(f"Audio ready — {len(chunks)} chunk(s) created.")
     return chunks
-from youtube_transcript_api import YouTubeTranscriptApi
-import re
 
-
-def extract_video_id(url: str) -> str:
-    match = re.search(r"(?:v=|youtu\.be/|shorts/)([a-zA-Z0-9_-]{11})", url)
-    if not match:
-        raise ValueError("Could not extract YouTube video ID from URL")
-    return match.group(1)
-
-
-def get_youtube_transcript_direct(url: str) -> str:
-    """Fetch YouTube's own captions directly. Free, works from any server
-    (including cloud-hosted apps), since it's not the download endpoint
-    that YouTube blocks — just the subtitle data."""
-    video_id = extract_video_id(url)
-    try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(
-            video_id, languages=["en", "en-US", "en-GB", "hi"]
-        )
-    except Exception as e:
-        raise RuntimeError(f"No captions available for this video: {e}")
-    return " ".join(entry["text"] for entry in transcript_list)
 
 if __name__ == "__main__":
-    result = process_input("https://youtu.be/-0uJMbWOjEc?si=Qd6KKF1SvN-22dm_")
-    print(result)
+    text = get_youtube_transcript_direct("https://youtu.be/-0uJMbWOjEc")
+    print(text)
