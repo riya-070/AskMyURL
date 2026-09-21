@@ -1,0 +1,11 @@
+.env
+downloades/
+downloads/
+vector_db/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.wav
+cookies.txt
+.env.example.local
