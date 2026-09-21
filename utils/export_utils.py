@@ -10,6 +10,7 @@ from docx.shared import Pt, RGBColor
 from fpdf import FPDF
 
 
+<<<<<<< HEAD
 def _content_to_text(content) -> str:
     """Normalize LLM output so exporters always receive plain text."""
     if content is None or content == "":
@@ -26,6 +27,8 @@ def _content_to_text(content) -> str:
     return str(content)
 
 
+=======
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 def _sections(result: dict):
     """Common ordered list of (heading, content) pairs used by both exporters."""
     return [
@@ -50,7 +53,11 @@ def export_to_docx(result: dict) -> bytes:
 
     for heading, content in _sections(result):
         doc.add_heading(heading, level=1)
+<<<<<<< HEAD
         para = doc.add_paragraph(_content_to_text(content))
+=======
+        para = doc.add_paragraph(content or "—")
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
         para.style.font.size = Pt(11)
 
     buf = io.BytesIO()
@@ -79,7 +86,11 @@ def export_to_pdf(result: dict) -> bytes:
 
     for heading, content in _sections(result):
         write_block(heading, style="B", size=13, color=(20, 20, 30))
+<<<<<<< HEAD
         safe_text = _content_to_text(content).encode("latin-1", "replace").decode("latin-1")
+=======
+        safe_text = (content or "-").encode("latin-1", "replace").decode("latin-1")
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
         write_block(safe_text, size=10, color=(50, 50, 60), gap=3)
 
     # fpdf2's output() returns a bytearray; wrap for Streamlit's download_button

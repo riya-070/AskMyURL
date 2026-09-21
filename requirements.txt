@@ -14,12 +14,21 @@ torchaudio>=2.2.0                 # Audio utilities for PyTorch
 # ── Translation (Hindi → English) ─────────────────────────────────────────────
 deep-translator>=1.11.4           # Lightweight translation wrapper (Google backend)
 
+<<<<<<< HEAD
 # ── LLM Orchestration — LangChain LCEL + Groq ─────────────────────────────────
 langchain>=0.2.0
 langchain-core>=0.2.0
 langchain-community>=0.2.0
 langchain-groq>=0.2.0             # LangChain wrapper for Groq API
 groq>=0.11.0                      # Hosted Whisper transcription for long media
+=======
+# ── LLM Orchestration — LangChain LCEL + Mistral ──────────────────────────────
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+langchain-mistralai>=0.1.0        # LangChain wrapper for Mistral API
+mistralai>=0.4.0                  # Official Mistral Python client
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
 # ── RAG Pipeline ──────────────────────────────────────────────────────────────
 chromadb>=0.5.0                   # Local vector store

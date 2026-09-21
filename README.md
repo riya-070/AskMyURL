@@ -6,6 +6,7 @@ Paste a YouTube link (or a local audio/video file), and AskMyURL will transcribe
 
 ---
 
+<<<<<<< HEAD
 ## Groq setup
 
 1. Create a Groq API key at `https://console.groq.com/`.
@@ -44,6 +45,12 @@ notes and transcript retrieval, so the deployed app remains usable.
 - ▶️ **YouTube fallback** — uses complete captions when available, otherwise downloads and transcribes the full audio in chunks
 - 📋 **AI summarization** — single-call structured analysis powered by Groq via LangChain
 - 🛟 **Offline fallback** — creates extractive notes and transcript matches if Groq is unavailable
+=======
+## ✨ Features
+
+- 🎙️ **Multi-language transcription** — English (via OpenAI Whisper, local) and Hindi/Hinglish (via Sarvam AI, with built-in translation)
+- 📋 **AI summarization** — map-reduce summarization powered by Mistral AI via LangChain
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 - ✅ **Structured extraction** — automatically pulls out action items, key decisions, and open questions
 - 💬 **Chat with your transcript** — RAG-based Q&A using ChromaDB + HuggingFace embeddings
 - 📄 **Export reports** — download results as PDF or DOCX
@@ -70,7 +77,11 @@ notes and transcript retrieval, so the deployed app remains usable.
               ▼            ▼             ▼
        ┌────────────┐ ┌──────────┐ ┌──────────────┐
        │ Summarizer │ │ Extractor│ │  RAG Engine  │
+<<<<<<< HEAD
        │   (Groq)   │ │  (Groq)  │ │  (ChromaDB)  │
+=======
+       │ (Mistral)  │ │ (Mistral)│ │  (ChromaDB)  │
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
        └──────┬─────┘ └────┬─────┘ └──────┬───────┘
               │            │              │
               ▼            ▼              ▼
@@ -86,8 +97,13 @@ notes and transcript retrieval, so the deployed app remains usable.
 | Layer | Technology |
 |---|---|
 | Audio processing | `yt-dlp`, `pydub`, `ffmpeg` |
+<<<<<<< HEAD
 | Speech-to-text | Groq Whisper (hosted), with local OpenAI Whisper fallback |
 | LLM / Summarization | `LangChain`, `Groq` |
+=======
+| Speech-to-text | `openai-whisper` (English), Sarvam AI API (Hindi/Hinglish) |
+| LLM / Summarization | `LangChain`, `Mistral AI` |
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 | RAG / Vector search | `ChromaDB`, `sentence-transformers` (`all-MiniLM-L6-v2`) |
 | Backend API | `FastAPI`, `Pydantic`, `uvicorn` |
 | Frontend | `Streamlit` |

@@ -1,17 +1,27 @@
 import os
+<<<<<<< HEAD
 from langchain_groq import ChatGroq
+=======
+from langchain_mistralai import ChatMistralAI
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from core.vector_store import build_vector_store, load_vector_store, get_retriever
 
 def get_llm():
+<<<<<<< HEAD
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
     return ChatGroq(
         model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
         api_key=api_key,
+=======
+    return ChatMistralAI(
+        model="mistral-small-latest",
+        mistral_api_key=os.getenv("MISTRAL_API_KEY"),
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
         temperature=0.3,
     )
 
@@ -24,11 +34,15 @@ def build_rag_chain(transcript:str):
 
     retriever = get_retriever(vector_store, k = 4)
 
+<<<<<<< HEAD
     try:
         llm = get_llm()
     except Exception as error:
         print(f"Groq Q&A setup unavailable; retrieval fallback enabled: {error}")
         return {"chain": None, "retriever": retriever}
+=======
+    llm = get_llm()
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
     prompt = ChatPromptTemplate.from_messages(
 
@@ -59,11 +73,16 @@ Context from meeting transcript:
          |prompt|llm|StrOutputParser()
     )
 
+<<<<<<< HEAD
     return {"chain": rag_chain, "retriever": retriever}
+=======
+    return rag_chain
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
 
 def load_rag_chain():
     vector_store = load_vector_store()
+<<<<<<< HEAD
     vector_store = load_vector_store()
     retriver = get_retriever(vector_store)
 
@@ -72,6 +91,11 @@ def load_rag_chain():
     except Exception as error:
         print(f"Groq Q&A setup unavailable; retrieval fallback enabled: {error}")
         return {"chain": None, "retriever": retriver}
+=======
+    retriver = get_retriever()
+
+    llm = get_llm()
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
     prompt = ChatPromptTemplate.from_messages([
         (
             "system",
@@ -99,11 +123,16 @@ Context from meeting transcript:
         | StrOutputParser()
     )
 
+<<<<<<< HEAD
     return {"chain": rag_chain, "retriever": retriver}
+=======
+    return rag_chain
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
 
 def ask_question(rag_chain, question:str) -> str:
     print(f"Question : {question}")
+<<<<<<< HEAD
     try:
         if rag_chain["chain"] is None:
             raise RuntimeError("Groq Q&A is not configured")
@@ -119,3 +148,8 @@ def ask_question(rag_chain, question:str) -> str:
         )
     print(f"answer :{answer}")
     return answer
+=======
+    answer = rag_chain.invoke(question)
+    print(f"answer :{answer}")
+    return answer
+>>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
