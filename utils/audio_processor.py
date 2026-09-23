@@ -78,16 +78,12 @@ def convert_to_wav(input_path: str) -> str:
     return output_path
 
 
-<<<<<<< HEAD
 def chunk_audio(wav_path: str, chunk_minutes: int = 8) -> list:
     """Split media into API-friendly pieces.
 
     Eight-minute mono/16 kHz WAV files stay comfortably below hosted speech
     API upload limits while allowing recordings much longer than ten minutes.
     """
-=======
-def chunk_audio(wav_path: str, chunk_minutes: int = 10) -> list:
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
     audio = AudioSegment.from_wav(wav_path)
     chunk_ms = chunk_minutes * 60 * 1000
     chunks = []
@@ -114,8 +110,4 @@ def process_input(source: str) -> list:
 
 if __name__ == "__main__":
     text = get_youtube_transcript_direct("https://youtu.be/-0uJMbWOjEc")
-<<<<<<< HEAD
     print(text)
-=======
-    print(text)
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d

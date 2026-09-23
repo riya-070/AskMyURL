@@ -12,10 +12,7 @@ Run with:
 Docs are auto-generated at:
     http://127.0.0.1:8000/docs
 """
-<<<<<<< HEAD
 import os
-=======
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 import uuid
 from dotenv import load_dotenv
 
@@ -27,12 +24,7 @@ from pydantic import BaseModel
 
 from utils.audio_processor import process_input
 from core.transcriber import transcribe_all
-<<<<<<< HEAD
 from core.analysis import analyse_transcript
-=======
-from core.summarizer import summarize, generate_title
-from core.extractor import extract_action_items, extract_key_decisions, extract_questions
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 from core.rag_engine import build_rag_chain, ask_question
 from utils.export_utils import export_to_pdf, export_to_docx
 
@@ -86,36 +78,19 @@ def analyze(req: AnalyzeRequest):
     try:
         chunks = process_input(req.source)
         transcript = transcribe_all(chunks, req.language)
-<<<<<<< HEAD
         analysis = analyse_transcript(transcript)
-=======
-        title = generate_title(transcript)
-        summary = summarize(transcript)
-        action_items = extract_action_items(transcript)
-        decisions = extract_key_decisions(transcript)
-        questions = extract_questions(transcript)
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
         rag_chain = build_rag_chain(transcript)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     session_id = str(uuid.uuid4())
     result = {
-<<<<<<< HEAD
         "title": analysis["title"],
         "transcript": transcript,
         "summary": analysis["summary"],
         "action_items": analysis["action_items"],
         "key_decisions": analysis["key_decisions"],
         "open_questions": analysis["open_questions"],
-=======
-        "title": title,
-        "transcript": transcript,
-        "summary": summary,
-        "action_items": action_items,
-        "key_decisions": decisions,
-        "open_questions": questions,
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
     }
     SESSIONS[session_id] = {"result": result, "rag_chain": rag_chain}
 
@@ -162,8 +137,4 @@ def download_youtube(req: AnalyzeRequest):
         wav_path = download_youtube_audio(req.source)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-<<<<<<< HEAD
     return FileResponse(wav_path, media_type="audio/wav", filename=os.path.basename(wav_path))
-=======
-    return FileResponse(wav_path, media_type="audio/wav", filename=os.path.basename(wav_path))
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d

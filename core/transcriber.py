@@ -6,23 +6,16 @@ os.environ["PATH"] += os.pathsep + r"C:\Users\hp\Desktop\ffmpeg\ffmpeg-8.1.2-ess
 import whisper
 import requests
 from pydub import AudioSegment
-<<<<<<< HEAD
 from groq import Groq
-=======
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
 # Sarvam's sync STT-translate API rejects audio longer than 30s.
 # We slice each chunk into 25s pieces (with a 5s safety margin) before sending.
 
 
 SARVAM_PIECE_SECONDS = 25
-<<<<<<< HEAD
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_STT_MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
-=======
-WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
 SARVAM_STT_TRANSLATE_URL = "https://api.sarvam.ai/speech-to-text-translate"
 SARVAM_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v2.5")
@@ -48,7 +41,6 @@ def transcribe_chunk_whisper(chunk_path: str) -> str:
     return result["text"]  
 
 
-<<<<<<< HEAD
 def transcribe_chunk_groq(chunk_path: str, language: str = "english") -> str:
     """Transcribe one small audio chunk using Groq's hosted Whisper model."""
     if not GROQ_API_KEY:
@@ -66,8 +58,6 @@ def transcribe_chunk_groq(chunk_path: str, language: str = "english") -> str:
     return response if isinstance(response, str) else response.text
 
 
-=======
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 def _send_to_sarvam(piece_path: str) -> str:
     """Send one ≤30s WAV file to Sarvam and return the English transcript."""
     headers = {"api-subscription-key": SARVAM_API_KEY}
@@ -129,7 +119,6 @@ def transcribe_chunk(chunk_path: str, language: str = "english") -> str:
     - english  → Whisper (local model)
     - hinglish → Sarvam (translates to English while transcribing)
     """
-<<<<<<< HEAD
     # Hosted Whisper is much faster and lighter on free deployments. If it is
     # temporarily unavailable, English still has a fully local fallback.
     try:
@@ -139,29 +128,19 @@ def transcribe_chunk(chunk_path: str, language: str = "english") -> str:
         if language.lower() == "hinglish" and SARVAM_API_KEY:
             return transcribe_chunk_sarvam(chunk_path)
         return transcribe_chunk_whisper(chunk_path)
-=======
-    if language.lower() == "hinglish":
-        return transcribe_chunk_sarvam(chunk_path)
-    return transcribe_chunk_whisper(chunk_path)
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 
 
 def transcribe_all(chunks: list, language: str = "english") -> str:
 
     full_transcript = "" 
 
-<<<<<<< HEAD
     engine = "Groq Whisper (with automatic fallback)"
-=======
-    engine = "Sarvam AI" if language.lower() == "hinglish" else "Whisper"
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
     print(f"Using {engine} for transcription.")
 
     for i, chunk in enumerate(chunks):  
 
         print(f"Transcribing chunk {i + 1}/{len(chunks)}...")
 
-<<<<<<< HEAD
         try:
             text = transcribe_chunk(chunk, language=language)
             full_transcript += text + " "
@@ -174,12 +153,3 @@ def transcribe_all(chunks: list, language: str = "english") -> str:
     print("Transcription complete.")
 
     return full_transcript.strip()  
-=======
-        text = transcribe_chunk(chunk, language=language)  
-
-        full_transcript += text + " "  
-
-    print("Transcription complete.")
-
-    return full_transcript.strip()  
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
