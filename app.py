@@ -1,4 +1,4 @@
-﻿import html
+import html
 import os
 import time
 
@@ -6,6 +6,15 @@ import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Streamlit Cloud normally exposes root-level secrets as environment variables,
+# but copy them explicitly as well so every imported service sees the same values.
+try:
+    for secret_name in ("GROQ_API_KEY", "GROQ_MODEL", "GROQ_STT_MODEL", "SARVAM_API_KEY"):
+        if not os.getenv(secret_name) and secret_name in st.secrets:
+            os.environ[secret_name] = str(st.secrets[secret_name]).strip()
+except Exception:
+    pass
 
 if "COOKIES_TXT_CONTENT" in os.environ:
     with open("cookies.txt", "w", encoding="utf-8") as cookie_file:
@@ -19,545 +28,63 @@ from utils.export_utils import export_to_docx, export_to_pdf
 
 st.set_page_config(
     page_title="AskMyURL",
-    page_icon="ðŸ”—",
+    page_icon="🔗",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-:root{
-    --ink:#172033;
-    --muted:#697386;
-    --brand:#4f46e5;
-    --brand-dark:#3730a3;
-    --brand-light:#eef2ff;
-    --line:#e1e5ed;
-    --page:#f7f8fb;
-    --white:#ffffff;
-}
-
-/* Base styling */
-
-*,
-*::before,
-*::after{
-    box-sizing:border-box;
-}
-
-html,
-body,
-.stApp,
-[data-testid="stAppViewContainer"]{
-    max-width:100%;
-    overflow-x:hidden;
-}
-
-html,
-body,
-[class*="css"]{
-    font-family:Inter,Arial,sans-serif;
-    color:var(--ink);
-}
-
-.stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"]{
-    background:var(--page);
-    color:var(--ink);
-}
-
-.block-container{
-    width:100%;
-    max-width:1240px;
-    padding:1.5rem 2rem 3rem;
-    margin:0 auto;
-}
-
-/* Hide default Streamlit interface */
-
-[data-testid="stHeader"],
-[data-testid="stToolbar"],
-[data-testid="stDecoration"],
-[data-testid="stSidebar"],
-[data-testid="collapsedControl"]{
-    display:none !important;
-}
-
-footer{
-    visibility:hidden;
-}
-
-/* Text and headings */
-
-[data-testid="stMarkdownContainer"],
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] h1,
-[data-testid="stMarkdownContainer"] h2,
-[data-testid="stMarkdownContainer"] h3,
-[data-testid="stMarkdownContainer"] h4,
-[data-testid="stWidgetLabel"] p,
-label{
-    color:var(--ink) !important;
-}
-
-h1,
-h2,
-h3,
-h4,
-[data-testid="stMarkdownContainer"] h4{
-    font-family:Inter,Arial,sans-serif !important;
-}
-
-[data-testid="stCaptionContainer"],
-[data-testid="stCaptionContainer"] p{
-    color:var(--muted) !important;
-}
-
-/* Optional sidebar brand classes */
-
-.brand{
-    display:flex;
-    align-items:center;
-    gap:.7rem;
-    margin-bottom:1.7rem;
-}
-
-.mark{
-    width:38px;
-    height:38px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:var(--brand);
-    color:#ffffff;
-    border-radius:10px;
-    font-weight:700;
-}
-
-.brand-name{
-    font-weight:700;
-}
-
-.brand-note{
-    margin-top:.1rem;
-    color:var(--muted);
-    font-size:.75rem;
-}
-
-/* Hero section */
-
-.hero{
-    padding:.25rem 0 1.25rem;
-    margin-bottom:1.25rem;
-}
-
-.eyebrow{
-    color:var(--brand);
-    font-size:2.6rem;
-    font-weight:800;
-    letter-spacing:-.025em;
-    line-height:1.15;
-    text-transform:none;
-}
-
-.hero h1 {
-    font-size: clamp(1.8rem, 2.5vw, 2.35rem);
-    font-weight: 600;
-    letter-spacing: -0.025em;
-    line-height: 1.2;
-    max-width: 1050px;
-    margin: 1rem 0;
-}
-
-.hero p{
-    max-width:820px;
-    margin:0;
-    color:var(--muted) !important;
-    font-size:1rem;
-    line-height:1.65;
-}
-
-/* Feature labels */
-
-.feature-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin-top:18px;
-}
-
-.feature-pill{
-    display:inline-flex;
-    align-items:center;
-    padding:8px 14px;
-    background:var(--brand-light);
-    color:#4338ca;
-    border:1px solid #dfe3ff;
-    border-radius:999px;
-    font-size:13px;
-    font-weight:600;
-}
-
-/* Streamlit bordered containers */
-
-div[data-testid="stVerticalBlockBorderWrapper"]{
-    padding:8px 10px;
-    background:var(--white) !important;
-    border:1px solid var(--line) !important;
-    border-radius:16px !important;
-    box-shadow:0 8px 26px rgba(23,32,51,.045);
-}
-
-/* Inputs */
-
-.stTextInput input,
-[data-baseweb="select"] > div,
-[data-testid="stFileUploaderDropzone"]{
-    background:var(--white) !important;
-    color:var(--ink) !important;
-    border-color:#d8dde7 !important;
-    border-radius:11px !important;
-}
-
-.stTextInput input{
-    min-height:48px;
-}
-
-.stTextInput input::placeholder{
-    color:#8a93a3 !important;
-}
-
-.stTextInput input:focus{
-    border-color:var(--brand) !important;
-    box-shadow:0 0 0 3px rgba(79,70,229,.10) !important;
-}
-
-[data-baseweb="select"] span,
-[data-baseweb="select"] svg{
-    color:var(--ink) !important;
-    fill:var(--ink) !important;
-}
-
-[data-testid="stFileUploaderDropzone"]{
-    min-height:78px;
-    display:flex;
-    align-items:center;
-}
-
-[data-testid="stFileUploaderDropzone"] button{
-    background:var(--white) !important;
-    color:var(--ink) !important;
-    border:1px solid #d8dde7 !important;
-}
-
-/* Standard buttons */
-
-.stButton > button,
-[data-testid="stBaseButton-secondary"]{
-    min-height:48px;
-    background:var(--white) !important;
-    color:var(--ink) !important;
-    border:1px solid #d8dde7 !important;
-    border-radius:10px !important;
-    font-weight:600 !important;
-    transition:
-        transform .15s ease,
-        box-shadow .15s ease,
-        background .15s ease;
-}
-
-.stButton > button p,
-[data-testid="stBaseButton-secondary"] p{
-    color:var(--ink) !important;
-}
-
-.stButton > button[kind="primary"],
-[data-testid="stBaseButton-primary"]{
-    background:var(--brand) !important;
-    color:#ffffff !important;
-    border-color:var(--brand) !important;
-}
-
-.stButton > button[kind="primary"] p,
-[data-testid="stBaseButton-primary"] p{
-    color:#ffffff !important;
-}
-
-.stButton > button:hover{
-    transform:translateY(-1px);
-    box-shadow:0 7px 18px rgba(79,70,229,.18);
-}
-
-.stButton > button[kind="primary"]:hover,
-[data-testid="stBaseButton-primary"]:hover{
-    background:var(--brand-dark) !important;
-    border-color:var(--brand-dark) !important;
-}
-
-/* Download buttons */
-
-div[data-testid="stDownloadButton"] button{
-    min-height:48px !important;
-    background:var(--brand) !important;
-    color:#ffffff !important;
-    border:1px solid var(--brand) !important;
-    border-radius:10px !important;
-    font-weight:700 !important;
-}
-
-div[data-testid="stDownloadButton"] button p,
-div[data-testid="stDownloadButton"] button span,
-div[data-testid="stDownloadButton"] button svg{
-    color:#ffffff !important;
-    fill:#ffffff !important;
-}
-
-div[data-testid="stDownloadButton"] button:hover{
-    background:var(--brand-dark) !important;
-    border-color:var(--brand-dark) !important;
-}
-
-/* Result cards */
-
-.panel,
-.metric,
-.step{
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:13px;
-}
-
-.panel{
-    padding:1.25rem;
-    margin:1rem 0;
-    box-shadow:0 5px 18px rgba(23,32,51,.04);
-}
-
-.label{
-    margin-bottom:.65rem;
-    color:var(--muted);
-    font-size:.75rem;
-    font-weight:700;
-    letter-spacing:.07em;
-    text-transform:uppercase;
-}
-
-.result-title{
-    font-size:1.3rem;
-    font-weight:700;
-}
-
-.copy{
-    font-size:.93rem;
-    line-height:1.75;
-    white-space:pre-wrap;
-}
-
-.metric{
-    min-height:88px;
-    padding:1rem;
-}
-
-.metric-value{
-    font-size:1.4rem;
-    font-weight:700;
-}
-
-.metric-label{
-    margin-top:.25rem;
-    color:var(--muted);
-    font-size:.77rem;
-}
-
-/* Empty state */
-
-.empty{
-    padding:2.2rem 1.5rem;
-    margin-top:1.8rem;
-    background:var(--white);
-    border:1px dashed #cdd3de;
-    border-radius:14px;
-    text-align:center;
-    box-shadow:0 6px 22px rgba(23,32,51,.035);
-}
-
-.empty h3{
-    margin:.6rem 0 .35rem;
-}
-
-.empty p{
-    max-width:540px;
-    margin:auto;
-    color:var(--muted);
-    line-height:1.6;
-}
-
-/* Steps */
-
-.steps{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:1rem;
-    margin-top:1rem;
-}
-
-.step{
-    min-height:120px;
-    padding:1.15rem;
-    transition:
-        transform .15s ease,
-        box-shadow .15s ease;
-}
-
-.step:hover{
-    transform:translateY(-2px);
-    box-shadow:0 8px 22px rgba(23,32,51,.06);
-}
-
-.step-no{
-    color:var(--brand);
-    font-size:.76rem;
-    font-weight:700;
-}
-
-.step-title{
-    margin:.35rem 0;
-    font-size:.88rem;
-    font-weight:650;
-}
-
-.step-copy{
-    color:var(--muted);
-    font-size:.77rem;
-    line-height:1.45;
-}
-
-/* Progress indicator */
-
-.progress-row{
-    display:flex;
-    justify-content:space-between;
-    margin:.7rem 0 .4rem;
-    color:var(--muted);
-    font-size:.76rem;
-}
-
-.progress-track{
-    height:6px;
-    background:#eceff4;
-    border-radius:99px;
-    overflow:hidden;
-}
-
-.progress-fill{
-    height:100%;
-    background:var(--brand);
-}
-
-/* Transcript */
-
-.transcript{
-    max-height:360px;
-    padding:1rem;
-    overflow:auto;
-    background:#f8f9fb;
-    border:1px solid var(--line);
-    border-radius:10px;
-    font-size:.87rem;
-    line-height:1.7;
-    white-space:pre-wrap;
-}
-
-/* Chat */
-
-.chat{
-    display:flex;
-    margin:.7rem 0;
-}
-
-.chat.user{
-    justify-content:flex-end;
-}
-
-.bubble{
-    max-width:78%;
-    padding:.75rem .9rem;
-    background:#eef0f4;
-    border-radius:12px;
-    font-size:.9rem;
-    line-height:1.55;
-}
-
-.chat.user .bubble{
-    background:var(--brand);
-    color:#ffffff;
-}
-
-.who{
-    margin-bottom:.2rem;
-    color:var(--muted);
-    font-size:.68rem;
-}
-
-.chat.user .who{
-    color:#d9dcff;
-}
-
-/* Responsive layout */
-
-@media(max-width:1100px){
-    .block-container{
-        max-width:100%;
-        padding-right:1.5rem;
-        padding-left:1.5rem;
-    }
-
-    .hero h1{
-        font-size:2.4rem;
-    }
-}
-
-@media(max-width:760px){
-    .block-container{
-        padding:1.2rem 1rem 2rem;
-    }
-
-    .hero{
-        padding-top:0;
-    }
-
-    .hero h1{
-        font-size:1.85rem;
-    }
-
-    .eyebrow{
-        font-size:1.65rem;
-    }
-
-    .feature-row{
-        gap:7px;
-    }
-
-    .feature-pill{
-        padding:7px 11px;
-        font-size:12px;
-    }
-
-    .steps{
-        grid-template-columns:1fr;
-    }
-
-    .empty{
-        padding:1.7rem 1rem;
-    }
-
-    .bubble{
-        max-width:90%;
-    }
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {--ink:#172033;--muted:#697386;--brand:#4f46e5;--dark:#3730a3;--line:#e5e9f0;--page:#f7f8fb}
+html,body,[class*="css"]{font-family:Inter,sans-serif;color:var(--ink)}
+html,body,.stApp,[data-testid="stAppViewContainer"]{max-width:100%;overflow-x:hidden}
+*,*::before,*::after{box-sizing:border-box}
+.stApp{background:var(--page);color:var(--ink)}
+.block-container{width:100%;max-width:980px;padding:2rem 2rem 3rem;margin:0 auto}
+[data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stDecoration"],
+[data-testid="stSidebar"],[data-testid="collapsedControl"]{display:none!important}
+[data-testid="stAppViewContainer"], [data-testid="stMain"]{background:var(--page);color:var(--ink)}
+[data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3, [data-testid="stMarkdownContainer"] h4,
+[data-testid="stWidgetLabel"] p, label, .hero h1 {color:var(--ink)!important}
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p{color:var(--muted)!important}
+.brand{display:flex;align-items:center;gap:.7rem;margin-bottom:1.7rem}
+.mark{width:38px;height:38px;border-radius:10px;background:var(--brand);color:white;display:flex;align-items:center;justify-content:center;font-weight:700}
+.brand-name{font-weight:700}.brand-note{font-size:.75rem;color:var(--muted);margin-top:.1rem}
+.hero{margin-bottom:1.4rem}.eyebrow{font-size:2rem;font-weight:800;color:var(--brand);letter-spacing:-.03em;text-transform:none;line-height:1.15}
+.hero h1{font-size:clamp(2rem,3.2vw,2.65rem);letter-spacing:-.035em;line-height:1.12;margin:.4rem 0 .7rem;white-space:normal;overflow-wrap:anywhere}
+.hero p{color:var(--muted);max-width:720px;line-height:1.65}
+.panel,.metric,.step{background:#fff;border:1px solid var(--line);border-radius:13px}
+.panel{padding:1.25rem;margin:1rem 0;box-shadow:0 5px 18px rgba(23,32,51,.04)}
+.label{font-size:.75rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.65rem}
+.result-title{font-size:1.3rem;font-weight:700}.copy{line-height:1.75;white-space:pre-wrap;font-size:.93rem}
+.metric{padding:1rem;min-height:88px}.metric-value{font-size:1.4rem;font-weight:700}.metric-label{font-size:.77rem;color:var(--muted);margin-top:.25rem}
+.empty{background:#fff;border:1px dashed #cdd3de;border-radius:14px;text-align:center;padding:2.4rem 1rem;margin-top:1rem}
+.empty h3{margin:.6rem 0 .35rem}.empty p{color:var(--muted);max-width:540px;margin:auto;line-height:1.6}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:.9rem}.step{padding:1rem}
+.step-no{font-size:.76rem;color:var(--brand);font-weight:700}.step-title{font-size:.88rem;font-weight:650;margin:.35rem 0}.step-copy{font-size:.77rem;color:var(--muted);line-height:1.45}
+.progress-row{display:flex;justify-content:space-between;font-size:.76rem;color:var(--muted);margin:.7rem 0 .4rem}
+.progress-track{height:6px;background:#eceff4;border-radius:99px;overflow:hidden}.progress-fill{height:100%;background:var(--brand)}
+.transcript{background:#f8f9fb;border:1px solid var(--line);border-radius:10px;padding:1rem;max-height:360px;overflow:auto;white-space:pre-wrap;line-height:1.7;font-size:.87rem}
+.chat{display:flex;margin:.7rem 0}.chat.user{justify-content:flex-end}.bubble{max-width:78%;padding:.75rem .9rem;border-radius:12px;background:#eef0f4;font-size:.9rem;line-height:1.55}
+.chat.user .bubble{background:var(--brand);color:#fff}.who{font-size:.68rem;color:var(--muted);margin-bottom:.2rem}.chat.user .who{color:#d9dcff}
+.stTextInput input,[data-baseweb="select"]>div,[data-testid="stFileUploaderDropzone"]{background:#fff!important;color:var(--ink)!important;border-color:#d8dde7!important;border-radius:10px!important}
+.stTextInput input::placeholder{color:#8a93a3!important}
+[data-baseweb="select"] span,[data-baseweb="select"] svg{color:var(--ink)!important;fill:var(--ink)!important}
+[data-testid="stFileUploaderDropzone"] button{background:#fff!important;color:var(--ink)!important;border:1px solid #d8dde7!important}
+.stButton>button,[data-testid="stBaseButton-secondary"]{background:#fff!important;color:var(--ink)!important;border:1px solid #d8dde7!important;border-radius:10px!important;font-weight:600!important;min-height:42px}
+.stButton>button p,[data-testid="stBaseButton-secondary"] p{color:var(--ink)!important}
+.stButton>button[kind="primary"],[data-testid="stBaseButton-primary"]{background:var(--brand)!important;color:#fff!important;border-color:var(--brand)!important}
+.stButton>button[kind="primary"] p,[data-testid="stBaseButton-primary"] p{color:#fff!important}
+.stButton>button[kind="primary"]:hover,[data-testid="stBaseButton-primary"]:hover{background:var(--dark)!important;border-color:var(--dark)!important}
+div[data-testid="stDownloadButton"] button{background:var(--brand)!important;color:#fff!important;border:1px solid var(--brand)!important;border-radius:10px!important;font-weight:700!important;min-height:48px!important}
+div[data-testid="stDownloadButton"] button p,div[data-testid="stDownloadButton"] button span,div[data-testid="stDownloadButton"] button svg{color:#fff!important;fill:#fff!important}
+div[data-testid="stDownloadButton"] button:hover{background:var(--dark)!important;border-color:var(--dark)!important}
+footer{visibility:hidden}
+@media(max-width:1100px){.block-container{max-width:100%;padding-left:1.5rem;padding-right:1.5rem}.hero h1{font-size:2.15rem}}
+@media(max-width:760px){.steps{grid-template-columns:1fr}.block-container{padding:1.2rem 1rem 2rem}.hero h1{font-size:1.8rem}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -586,11 +113,11 @@ def reset_workspace():
     st.session_state.pipeline_steps = {}
 
 with st.sidebar:
-    st.markdown('<div class="brand"><div class="mark">â†—</div><div><div class="brand-name">AskMyURL</div><div class="brand-note">Video notes, made useful</div></div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand"><div class="mark">↗</div><div><div class="brand-name">AskMyURL</div><div class="brand-note">Video notes, made useful</div></div></div>', unsafe_allow_html=True)
     st.markdown("**What it does**")
     st.caption("Turns a YouTube video or recording into a transcript, concise notes, and searchable Q&A.")
     st.markdown("**Supported input**")
-    st.caption("YouTube links Â· MP3 Â· WAV Â· MP4 Â· M4A Â· WEBM")
+    st.caption("YouTube links · MP3 · WAV · MP4 · M4A · WEBM")
     st.markdown("**Languages**")
     st.caption("English and Hindi/Hinglish")
     if st.session_state.pipeline_steps:
@@ -600,34 +127,21 @@ with st.sidebar:
 
 st.markdown("""
 <section class="hero">
-  <div class="eyebrow" style="font-size:36px !important; font-weight:800;">
-    AskMyURL
-  </div>
-
-  <h1>Turn long videos into notes you’ll actually use.</h1>
-
-  <p>
-    Paste a YouTube link or upload a recording. Get a clear transcript,
-    useful notes, and answers without replaying the whole thing.
-  </p>
-
-  <div class="feature-row">
-    <span class="feature-pill">YouTube & uploads</span>
-    <span class="feature-pill">English & Hinglish</span>
-    <span class="feature-pill">PDF & DOCX reports</span>
-  </div>
+  <div class="eyebrow">AskMyURL</div>
+  <h1>One link. Clear notes. Quick answers.</h1>
+  <p>Paste a YouTube link or upload a recording to generate a transcript, useful summaries, and answers grounded in the original content.</p>
 </section>
 """, unsafe_allow_html=True)
 
 with st.container(border=True):
     st.markdown("#### Add your content")
     source = st.text_input("YouTube link", placeholder="https://www.youtube.com/watch?v=...")
-    file_col, language_col = st.columns([2.3, 1], gap="large")
+    file_col, language_col = st.columns([3, 1])
     with file_col:
         uploaded_file = st.file_uploader("Or upload an audio/video file", type=["mp3", "wav", "mp4", "m4a", "webm"])
     with language_col:
         language = st.selectbox("Audio language", ["english", "hinglish"], format_func=lambda x: "English" if x == "english" else "Hindi / Hinglish")
-    button_col, note_col = st.columns([1, 2.8], gap="large", vertical_alignment="center")
+    button_col, note_col = st.columns([1.2, 3.8], vertical_alignment="center")
     with button_col:
         run_btn = st.button("Analyse content", type="primary", use_container_width=True)
     with note_col:
@@ -689,6 +203,7 @@ if run_btn:
                 "action_items": action_items, "key_decisions": decisions,
                 "open_questions": questions, "rag_chain": rag_chain,
                 "used_fallback": analysis.get("used_fallback", False),
+                "fallback_reason": analysis.get("fallback_reason", ""),
             }
             st.session_state.pipeline_done = True
             live_area.success("Your notes are ready.")
@@ -701,8 +216,12 @@ if run_btn:
 if st.session_state.result:
     result = st.session_state.result
     if result.get("used_fallback"):
-        st.info("Groq was unavailable, so AskMyURL created these notes using its built-in offline fallback.")
-    title_col, new_col = st.columns([4, 1], gap="large")
+        reason = result.get("fallback_reason") or "The AI provider could not complete the request."
+        st.warning(
+            f"{reason} AskMyURL created extractive notes so the request was not lost. "
+            "Check the GROQ_API_KEY secret or retry after a short wait for full AI-generated notes."
+        )
+    title_col, new_col = st.columns([5, 1])
     with title_col:
         st.markdown(f'<div class="panel"><div class="label">Generated title</div><div class="result-title">{safe(result["title"])}</div></div>', unsafe_allow_html=True)
     with new_col:
@@ -721,7 +240,7 @@ if st.session_state.result:
     filename = "".join(c for c in str(result["title"])[:40] if c.isalnum() or c in " -_").strip() or "askmyurl-notes"
     with export_1:
         st.download_button(
-            "â¬‡ Download complete PDF",
+            "⬇ Download complete PDF",
             export_to_pdf(result),
             f"{filename}.pdf",
             "application/pdf",
@@ -729,7 +248,7 @@ if st.session_state.result:
         )
     with export_2:
         st.download_button(
-            "â¬‡ Download editable DOCX",
+            "⬇ Download editable DOCX",
             export_to_docx(result),
             f"{filename}.docx",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -763,8 +282,8 @@ if st.session_state.result:
         st.rerun()
 else:
     st.markdown("""
-    <div class="empty"><div style="font-size:1.7rem">▤</div><h3>Your notes will show up here</h3>
-    <p>Add a link or recording above. Once it is ready, you can review the summary, search the transcript, and download the complete report.</p></div> 
+    <div class="empty"><div style="font-size:1.7rem">▤</div><h3>Your notes will appear here</h3>
+    <p>Start with a link or recording above. AskMyURL will organise the content into sections you can read, download, and question.</p></div>
     <div class="steps">
       <div class="step"><div class="step-no">01</div><div class="step-title">Add content</div><div class="step-copy">Paste a YouTube link or upload a supported media file.</div></div>
       <div class="step"><div class="step-no">02</div><div class="step-title">Review the notes</div><div class="step-copy">Read the summary, action items, decisions, and transcript.</div></div>
@@ -772,5 +291,4 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-st.caption("AskMyURL · Making long-form content easier to understand")
-
+st.caption("AskMyURL · Streamlit, Groq Whisper, LangChain, and ChromaDB · Long-form build 3.1")

@@ -1,121 +1,87 @@
-import os
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from core.vector_store import build_vector_store, load_vector_store, get_retriever
+"""Grounded transcript Q&A with Groq and a useful local fallback."""
 
-def get_llm():
-    api_key = os.getenv("GROQ_API_KEY")
+import os
+import re
+import time
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
+from core.vector_store import build_vector_store, get_retriever
+
+DEFAULT_MODELS = ("openai/gpt-oss-20b", "llama-3.1-8b-instant")
+
+def _models() -> list[str]:
+    configured = os.getenv("GROQ_MODEL", "").strip()
+    return list(dict.fromkeys([configured, *DEFAULT_MODELS])) if configured else list(DEFAULT_MODELS)
+
+def get_llm(model: str | None = None, temperature: float = 0.1):
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
-    return ChatGroq(
-        model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
-        api_key=api_key,
-        temperature=0.3,
-    )
+    return ChatGroq(api_key=api_key, model=model or _models()[0], temperature=temperature, timeout=75, max_retries=2)
 
-def format_docs(docs):
-    return "\n\n".join([doc.page_content for doc in docs])
+def _unique_docs(docs) -> list[str]:
+    unique, seen = [], set()
+    for doc in docs:
+        text = re.sub(r"\s+", " ", doc.page_content).strip()
+        fingerprint = text[:240].lower()
+        if text and fingerprint not in seen:
+            seen.add(fingerprint)
+            unique.append(text)
+    return unique
 
-def build_rag_chain(transcript:str):
+def format_docs(docs) -> str:
+    return "\n\n".join(f"[Passage {i}] {text}" for i, text in enumerate(_unique_docs(docs), 1))
 
+def _local_answer(docs, question: str) -> str:
+    question_terms = {
+        word for word in re.findall(r"[a-zA-Z0-9']{3,}", question.lower())
+        if word not in {"what", "when", "where", "which", "about", "does", "this", "that", "video"}
+    }
+    candidates, seen = [], set()
+    for text in _unique_docs(docs):
+        for sentence in re.split(r"(?<=[.!?])\s+", text):
+            sentence = sentence.strip()
+            key = re.sub(r"\W+", " ", sentence.lower())[:180]
+            if len(sentence.split()) < 6 or key in seen:
+                continue
+            seen.add(key)
+            terms = set(re.findall(r"[a-zA-Z0-9']{3,}", sentence.lower()))
+            candidates.append((len(question_terms & terms), sentence))
+    ranked = [s for score, s in sorted(candidates, key=lambda item: item[0], reverse=True) if score > 0]
+    if not ranked:
+        return "I could not find this information in the transcript."
+    return "Based on the transcript, " + " ".join(ranked[:4])
+
+PROMPT = ChatPromptTemplate.from_messages([
+    ("system", "You answer questions about one video using only the supplied transcript passages. "
+     "Give a direct natural-language answer first; do not merely repeat or list passages. "
+     "Combine evidence, remove repetition, and retain useful names, numbers, examples, and qualifications. "
+     "Use 2-5 sentences unless the user requests a list or detailed explanation. If the answer is absent, "
+     "say exactly: I could not find this information in the transcript.\n\nContext:\n{context}"),
+    ("human", "Question: {question}"),
+])
+
+def build_rag_chain(transcript: str):
     vector_store = build_vector_store(transcript)
-
-    retriever = get_retriever(vector_store, k = 4)
-
-    try:
-        llm = get_llm()
-    except Exception as error:
-        print(f"Groq Q&A setup unavailable; retrieval fallback enabled: {error}")
-        return {"chain": None, "retriever": retriever}
-
-    prompt = ChatPromptTemplate.from_messages(
-
-        [(
-            "system",
-            """You are an expert meeting assistant. Answer the user's question 
-based ONLY on the meeting transcript context provided below.
-
-If the answer is not found in the context, say: 
-"I could not find this information in the meeting transcript."
-
-Always be concise and precise. If quoting someone, mention it clearly.
-
-Context from meeting transcript:
-{context}""",
-        ),
-        ("human", "{question}"),
-    ]
-    )
-
-    #full LCEL Rag pipeline 
-
-    rag_chain = (
-
-        {"context" : retriever | RunnableLambda(format_docs),
-         "question": RunnablePassthrough()
-         }
-         |prompt|llm|StrOutputParser()
-    )
-
-    return {"chain": rag_chain, "retriever": retriever}
-
+    return {"retriever": get_retriever(vector_store, k=6)}
 
 def load_rag_chain():
-    vector_store = load_vector_store()
-    vector_store = load_vector_store()
-    retriver = get_retriever(vector_store)
+    raise RuntimeError("Analyse content before asking a question.")
 
-    try:
-        llm = get_llm()
-    except Exception as error:
-        print(f"Groq Q&A setup unavailable; retrieval fallback enabled: {error}")
-        return {"chain": None, "retriever": retriver}
-    prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """You are an expert meeting assistant. Answer the user's question 
-based ONLY on the meeting transcript context provided below.
-
-If the answer is not found in the context, say: 
-"I could not find this information in the meeting transcript."
-
-Always be concise and precise. If quoting someone, mention it clearly.
-
-Context from meeting transcript:
-{context}""",
-        ),
-        ("human", "{question}"),
-    ])
-
-    rag_chain = (
-        {
-            "context":  retriver| RunnableLambda(format_docs),
-            "question": RunnablePassthrough(),
-        }
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    return {"chain": rag_chain, "retriever": retriver}
-
-
-def ask_question(rag_chain, question:str) -> str:
-    print(f"Question : {question}")
-    try:
-        if rag_chain["chain"] is None:
-            raise RuntimeError("Groq Q&A is not configured")
-        answer = rag_chain["chain"].invoke(question)
-    except Exception as error:
-        print(f"Groq Q&A unavailable; returning transcript passages: {error}")
-        docs = rag_chain["retriever"].invoke(question)
-        excerpts = [doc.page_content.strip() for doc in docs[:3] if doc.page_content.strip()]
-        answer = (
-            "Relevant transcript passages:\n\n" + "\n\n".join(excerpts)
-            if excerpts
-            else "I could not find relevant information in the transcript."
-        )
-    print(f"answer :{answer}")
-    return answer
+def ask_question(rag_chain, question: str) -> str:
+    docs = rag_chain["retriever"].invoke(question)
+    context, last_error = format_docs(docs), None
+    for model in _models():
+        try:
+            answer = (PROMPT | get_llm(model=model) | StrOutputParser()).invoke(
+                {"context": context, "question": question}
+            ).strip()
+            if answer:
+                return answer
+        except Exception as error:
+            last_error = error
+            print(f"Groq Q&A failed with {model}: {type(error).__name__}: {error}")
+            time.sleep(1)
+    print(f"All Groq Q&A models unavailable; using extractive answer: {last_error}")
+    return _local_answer(docs, question)

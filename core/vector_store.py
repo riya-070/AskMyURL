@@ -1,58 +1,42 @@
-import os 
-from langchain_chroma import Chroma 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+"""Vector-store helpers for one isolated transcript at a time."""
+
+from uuid import uuid4
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-CHROMA_DIR = "vector_db"
-COLLECTION_NAME = "meeting_transcript"
-EMBEDDING_MODEL  = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 def get_embeddings():
     return HuggingFaceEmbeddings(
-        model_name = EMBEDDING_MODEL,
-        model_kwargs = {"device" : 'cpu'}
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
     )
 
-def build_vector_store(transcript : str)->Chroma:
-    print("Building vector Store")
-
+def build_vector_store(transcript: str) -> Chroma:
+    """Build a fresh in-memory collection so videos never contaminate each other."""
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 500,
-        chunk_overlap = 50
+        chunk_size=900,
+        chunk_overlap=160,
+        separators=["\n\n", ". ", "? ", "! ", "\n", " "],
     )
-    chunks = splitter.split_text(transcript)
-
-    docs = [
-        Document(page_content=chunk, metadata = {'chunk_index' : i})
-        for i,chunk in enumerate(chunks)
-    ]
-
-    embeddings = get_embeddings()
-    vector_store = Chroma.from_documents(
-        documents= docs,
-        embedding=embeddings,
-        collection_name=COLLECTION_NAME,
-        persist_directory=CHROMA_DIR
+    chunks = [chunk.strip() for chunk in splitter.split_text(transcript) if chunk.strip()]
+    docs = [Document(page_content=chunk, metadata={"chunk_index": i}) for i, chunk in enumerate(chunks)]
+    if not docs:
+        raise ValueError("The transcript is empty, so Q&A could not be prepared.")
+    return Chroma.from_documents(
+        documents=docs,
+        embedding=get_embeddings(),
+        collection_name=f"transcript_{uuid4().hex}",
     )
 
-    return vector_store
+def load_vector_store():
+    raise RuntimeError("A saved vector store is not reused; analyse the content again.")
 
-
-
-def load_vector_store() ->Chroma:
-    embeddings = get_embeddings()
-    vector_store = Chroma(
-        collection_name=COLLECTION_NAME,
-        embedding_function= embeddings,
-        persist_directory=CHROMA_DIR
-    )
-
-    return vector_store
-
-def get_retriever(vector_store : Chroma, k :int = 4):
+def get_retriever(vector_store: Chroma, k: int = 6):
     return vector_store.as_retriever(
-        search_type = 'similarity',
-        search_kwargs = {"k":k}
+        search_type="mmr",
+        search_kwargs={"k": k, "fetch_k": max(18, k * 3), "lambda_mult": 0.72},
     )
-

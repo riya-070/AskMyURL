@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import time
 from collections import Counter
 
 from langchain_core.output_parsers import StrOutputParser
@@ -10,15 +11,27 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+DEFAULT_MODELS = ("openai/gpt-oss-20b", "llama-3.1-8b-instant")
 MAX_ANALYSIS_CHARS = int(os.getenv("MAX_ANALYSIS_CHARS", "80000"))
 
 
-def get_llm(temperature: float = 0.2):
-    api_key = os.getenv("GROQ_API_KEY")
+def _models() -> list[str]:
+    configured = os.getenv("GROQ_MODEL", "").strip()
+    return list(dict.fromkeys([configured, *DEFAULT_MODELS])) if configured else list(DEFAULT_MODELS)
+
+
+def get_llm(model: str | None = None, temperature: float = 0.15):
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not configured")
-    return ChatGroq(api_key=api_key, model=GROQ_MODEL, temperature=temperature)
+    return ChatGroq(
+        api_key=api_key,
+        model=model or _models()[0],
+        temperature=temperature,
+        timeout=90,
+        max_retries=2,
+        max_tokens=3200,
+    )
 
 
 def _sentences(text: str) -> list[str]:
@@ -96,8 +109,22 @@ def analyse_without_api(transcript: str) -> dict:
         sentence_words = re.findall(r"[a-zA-Z][a-zA-Z'-]{2,}", sentence.lower())
         score = sum(frequencies[word] for word in sentence_words) / max(len(sentence_words), 1)
         scored.append((score, index, sentence))
-    chosen = sorted(sorted(scored, reverse=True)[: min(12, len(scored))], key=lambda item: item[1])
-    summary = "\n".join(f"• {sentence}" for _, _, sentence in chosen)
+    # Select strong sentences while preserving coverage from the whole video.
+    chosen_by_index = {}
+    section_size = max(1, len(sentences) // 8)
+    for start in range(0, len(sentences), section_size):
+        section = [item for item in scored if start <= item[1] < start + section_size]
+        if section:
+            best = max(section, key=lambda item: item[0])
+            chosen_by_index[best[1]] = best
+    for item in sorted(scored, reverse=True):
+        if len(chosen_by_index) >= min(12, len(sentences)):
+            break
+        chosen_by_index[item[1]] = item
+    chosen = [chosen_by_index[index] for index in sorted(chosen_by_index)]
+    summary = "Overview generated from the most informative parts of the transcript:\n\n" + "\n".join(
+        f"• {sentence}" for _, _, sentence in chosen
+    )
 
     action_pattern = re.compile(r"\b(need to|needs to|must|should|will|action item|follow up|deadline|assigned)\b", re.I)
     decision_pattern = re.compile(r"\b(decided|agreed|approved|finalized|selected|chosen|confirmed)\b", re.I)
@@ -105,8 +132,7 @@ def analyse_without_api(transcript: str) -> dict:
     decisions = [sentence for sentence in sentences if decision_pattern.search(sentence)]
     questions = [sentence for sentence in sentences if "?" in sentence or re.search(r"\b(unresolved|need to clarify|open question)\b", sentence, re.I)]
 
-    title_words = [word.title() for word, _ in frequencies.most_common(5)]
-    title = " ".join(title_words[:5]) or "Video notes"
+    title = "Video Notes and Key Takeaways"
     return {
         "title": title,
         "summary": summary,
@@ -114,6 +140,7 @@ def analyse_without_api(transcript: str) -> dict:
         "key_decisions": _numbered(decisions, "No key decisions found."),
         "open_questions": _numbered(questions, "No open questions found."),
         "used_fallback": True,
+        "fallback_reason": "The AI provider could not be reached.",
     }
 
 
@@ -143,18 +170,37 @@ def analyse_transcript(transcript: str) -> dict:
         (
             "system",
             "You analyse video transcripts. Return valid JSON only with exactly these keys: "
-            "title (maximum 8 words), summary (a detailed list of 8-12 bullet points covering "
-            "the main arguments, explanations, examples, conclusions, and important facts), action_items (array), "
+            "title (a clear specific title of maximum 10 words), summary (an array of 10-15 complete, "
+            "well-written bullet points that together explain what the video is about, its main argument, "
+            "supporting explanations, examples, evidence, important names or numbers, contrasting viewpoints, "
+            "and final conclusion; avoid vague fragments and repetition), action_items (array), "
             "key_decisions (array), and open_questions (array). Do not invent facts. "
             "Use an empty array when a category has no items. Preserve useful names, numbers, "
-            "deadlines, and technical terms from the transcript.",
+            "deadlines, and technical terms from the transcript. Treat this as a video, not necessarily a meeting.",
         ),
         ("human", "Transcript:\n{transcript}"),
     ])
-    try:
-        chain = prompt | get_llm() | StrOutputParser()
-        raw = chain.invoke({"transcript": _prepare_long_transcript(transcript)})
-        return _parse_json_response(raw)
-    except Exception as error:
-        print(f"Groq analysis unavailable; using local fallback: {error}")
-        return analyse_without_api(transcript)
+    last_error = None
+    prepared = _prepare_long_transcript(transcript)
+    for model in _models():
+        try:
+            chain = prompt | get_llm(model=model) | StrOutputParser()
+            raw = chain.invoke({"transcript": prepared})
+            return _parse_json_response(raw)
+        except Exception as error:
+            last_error = error
+            print(f"Groq analysis failed with {model}: {type(error).__name__}: {error}")
+            time.sleep(1)
+
+    result = analyse_without_api(transcript)
+    message = str(last_error or "Unknown provider error").lower()
+    if "api_key" in message or "401" in message or "authentication" in message:
+        reason = "The Groq API key is missing or invalid."
+    elif "429" in message or "rate" in message:
+        reason = "The Groq API usage limit was reached temporarily."
+    elif "403" in message or "permission" in message:
+        reason = "The configured Groq project does not permit this model."
+    else:
+        reason = "Groq could not complete the request."
+    result["fallback_reason"] = reason
+    return result

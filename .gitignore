@@ -1,9 +1,6 @@
 .env
 downloades/
-<<<<<<< HEAD
 downloads/
-=======
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
 vector_db/
 __pycache__/
 *.pyc
@@ -11,7 +8,4 @@ __pycache__/
 venv/
 *.wav
 cookies.txt
-<<<<<<< HEAD
 .env.example.local
-=======
->>>>>>> 0060a37186cdc4a4742be5b19c12d34f6ac4d31d
