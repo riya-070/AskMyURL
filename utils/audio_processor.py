@@ -22,10 +22,9 @@ COOKIES_PATH = "cookies.txt"
 
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
-    ydl_opts = {
+    base_opts = {
         "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
         "outtmpl": output_path,
-        "cookiefile": COOKIES_PATH if os.path.exists(COOKIES_PATH) else None,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
@@ -36,11 +35,6 @@ def download_youtube_audio(url: str) -> str:
         "fragment_retries": 3,
         "socket_timeout": 30,
         "source_address": "0.0.0.0",
-        # Prefer yt-dlp's current supported web clients and avoid the client
-        # that commonly requires an unavailable proof-of-origin token.
-        "extractor_args": {
-            "youtube": {"player_client": ["default", "-android_sdkless"]}
-        },
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -49,22 +43,42 @@ def download_youtube_audio(url: str) -> str:
             }
         ],
         "quiet": True,
+        "no_warnings": True,
     }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            base, _ = os.path.splitext(ydl.prepare_filename(info))
-            filename = base + ".wav"
-    except Exception as error:
-        message = str(error)
-        if "403" in message or "Forbidden" in message or "Sign in" in message:
-            raise RuntimeError(
-                "This video has no usable captions and YouTube blocked audio "
-                "download from the cloud server. Please download the video/audio "
-                "on your device and upload the file here instead."
-            ) from error
-        raise RuntimeError(f"YouTube audio download failed: {message}") from error
-    return filename
+
+    # A stale cookies secret is a common cause of 403. Try the public route
+    # first, cookies second (needed for some restricted videos), then an
+    # alternate supported player-client configuration.
+    attempts = [{}]
+    if os.path.isfile(COOKIES_PATH) and os.path.getsize(COOKIES_PATH) > 0:
+        attempts.append({"cookiefile": COOKIES_PATH})
+    attempts.append({
+        "extractor_args": {
+            "youtube": {"player_client": ["default", "-android_sdkless"]}
+        }
+    })
+
+    errors = []
+    for extra_opts in attempts:
+        ydl_opts = {**base_opts, **extra_opts}
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                base, _ = os.path.splitext(ydl.prepare_filename(info))
+                filename = base + ".wav"
+                if not os.path.isfile(filename):
+                    raise RuntimeError("Audio conversion did not create a WAV file")
+                return filename
+        except Exception as error:
+            errors.append(str(error))
+
+    final_error = errors[-1] if errors else "unknown download error"
+    if any("403" in item or "Forbidden" in item or "Sign in" in item for item in errors):
+        raise RuntimeError(
+            "YouTube rejected the cloud download after multiple attempts. "
+            "Please upload the audio/video file instead."
+        )
+    raise RuntimeError(f"YouTube audio download failed: {final_error}")
 
 
 def extract_video_id(url: str) -> str:
@@ -80,12 +94,20 @@ def get_youtube_transcript_direct(url: str) -> str:
     on cloud IPs (though not guaranteed immune)."""
     video_id = extract_video_id(url)
     try:
-        ytt = YouTubeTranscriptApi()
-        fetched = ytt.fetch(video_id, languages=["en", "en-US", "en-GB", "hi"])
+        languages = ["en", "en-US", "en-GB", "hi", "hi-IN"]
+        # Support both the current and older youtube-transcript-api interfaces.
+        if hasattr(YouTubeTranscriptApi, "get_transcript"):
+            fetched = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
+        else:
+            fetched = YouTubeTranscriptApi().fetch(video_id, languages=languages)
         entries = fetched.to_raw_data() if hasattr(fetched, "to_raw_data") else fetched
-        return " ".join(
+        transcript = " ".join(
             e["text"] if isinstance(e, dict) else e.text for e in entries
         )
+        transcript = re.sub(r"\s+", " ", transcript).strip()
+        if len(transcript.split()) < 20:
+            raise RuntimeError("Captions were empty or incomplete")
+        return transcript
     except Exception as e:
         raise RuntimeError(f"No captions available for this video: {e}")
 

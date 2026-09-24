@@ -212,7 +212,12 @@ if run_btn:
         except Exception as error:
             live_area.empty()
             message = str(error)
-            if "403" in message or "Forbidden" in message or "blocked audio" in message:
+            if (
+                "403" in message
+                or "Forbidden" in message
+                or "blocked audio" in message
+                or "rejected the cloud" in message
+            ):
                 st.error(
                     "YouTube blocked this video's audio download from the cloud server. "
                     "This usually happens when the video has no usable captions. "
