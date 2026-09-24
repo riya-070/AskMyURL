@@ -211,7 +211,16 @@ if run_btn:
             st.rerun()
         except Exception as error:
             live_area.empty()
-            st.error(f"We couldn't process this content: {error}")
+            message = str(error)
+            if "403" in message or "Forbidden" in message or "blocked audio" in message:
+                st.error(
+                    "YouTube blocked this video's audio download from the cloud server. "
+                    "This usually happens when the video has no usable captions. "
+                    "Download the audio/video to your device, then upload it above; "
+                    "AskMyURL will transcribe and analyse the uploaded file."
+                )
+            else:
+                st.error(f"We couldn't process this content: {message}")
 
 if st.session_state.result:
     result = st.session_state.result

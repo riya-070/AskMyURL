@@ -23,13 +23,24 @@ COOKIES_PATH = "cookies.txt"
 def download_youtube_audio(url: str) -> str:
     output_path = os.path.join(DOWNLOAD_DIR, "%(id)s.%(ext)s")
     ydl_opts = {
-        "format": "bestaudio/best",
+        "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
         "outtmpl": output_path,
         "cookiefile": COOKIES_PATH if os.path.exists(COOKIES_PATH) else None,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
         "ffmpeg_location": FFMPEG_LOCATION,
+        "noplaylist": True,
+        "cachedir": False,
+        "retries": 3,
+        "fragment_retries": 3,
+        "socket_timeout": 30,
+        "source_address": "0.0.0.0",
+        # Prefer yt-dlp's current supported web clients and avoid the client
+        # that commonly requires an unavailable proof-of-origin token.
+        "extractor_args": {
+            "youtube": {"player_client": ["default", "-android_sdkless"]}
+        },
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -39,10 +50,20 @@ def download_youtube_audio(url: str) -> str:
         ],
         "quiet": True,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        base, _ = os.path.splitext(ydl.prepare_filename(info))
-        filename = base + ".wav"
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            base, _ = os.path.splitext(ydl.prepare_filename(info))
+            filename = base + ".wav"
+    except Exception as error:
+        message = str(error)
+        if "403" in message or "Forbidden" in message or "Sign in" in message:
+            raise RuntimeError(
+                "This video has no usable captions and YouTube blocked audio "
+                "download from the cloud server. Please download the video/audio "
+                "on your device and upload the file here instead."
+            ) from error
+        raise RuntimeError(f"YouTube audio download failed: {message}") from error
     return filename
 
 
