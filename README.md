@@ -1,121 +1,36 @@
 # 🔗 AskMyURL
 
-**AI-Powered URL Summarizer & Question-Answering System**
+Paste a YouTube link or upload a recording, and AskMyURL gives you a transcript, short notes, and a chat where you can ask questions about it.
 
-Paste a YouTube link (or a local audio/video file), and AskMyURL will transcribe it, summarize it, pull out action items and key decisions, and let you chat with the content using Retrieval-Augmented Generation (RAG).
+🌐 **Live demo:** [Try AskMyURL](https://askmyurl-x4z5vdmsby8a32uppcuzly.streamlit.app/)
 
----
+## What it does
+- Takes a YouTube link or an audio/video file
+- Creates a transcript
+- Makes a summary, action items, key decisions and open questions
+- Lets you ask questions about the video
+- Downloads the notes as PDF or DOCX
 
-## Groq setup
+## Who it's for
+- **Students:** turn a long lecture into notes and ask about the parts you missed
+- **Professionals:** pull action items and decisions out of a recorded meeting
+- **Anyone:** skip a 1-hour video and ask the one question you care about
 
-1. Create a Groq API key at `https://console.groq.com/`.
-2. Copy `.env.example` to `.env`.
-3. Put your real key in the local `.env` file:
+## Supported input
+- YouTube links
+- Audio and video files: MP3, WAV, MP4, M4A, WEBM
+- Languages: English and Hindi/Hinglish
 
-```env
-GROQ_API_KEY=your_real_key
-GROQ_MODEL=openai/gpt-oss-20b
-GROQ_STT_MODEL=whisper-large-v3-turbo
-WHISPER_MODEL=base
-```
+## How it works
+1. Get the transcript (YouTube captions, or audio transcription with Groq Whisper)
+2. Send the transcript to an AI model (Groq) to create the notes
+3. Store the transcript in ChromaDB, so questions are answered from the video's content (RAG)
 
-4. Install dependencies and run the app:
+## What makes it useful
+- **Handles long videos:** recordings are split into 8-minute sections and transcribed one by one
+- **Fast when possible:** uses YouTube captions first, and transcribes audio only when captions are missing
+- **Answers from the video:** replies come only from the transcript, so it doesn't make things up
+- **Keeps working if the AI is down:** it switches to a backup and still gives notes and answers
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-The footer should show `Long-form build 3.1`. If it does not, an older copy of
-the project is still running. Stop that Streamlit terminal and start the app
-from the newly extracted folder.
-
-For Streamlit Community Cloud, add `GROQ_API_KEY` and `GROQ_MODEL` in the
-app's Secrets settings. Never commit `.env` or `cookies.txt` to GitHub.
-
-If Groq is unavailable, AskMyURL automatically falls back to local extractive
-notes and transcript retrieval, so the deployed app remains usable.
-
----
-
-## ✨ Features
-
-- 🎙️ **Long-form transcription** — recordings are split into 8-minute sections and processed with Groq Whisper; local Whisper remains available as a fallback
-- ▶️ **YouTube fallback** — uses complete captions when available, otherwise downloads and transcribes the full audio in chunks
-- 📋 **AI summarization** — single-call structured analysis powered by Groq via LangChain
-- 🛟 **Offline fallback** — creates extractive notes and transcript matches if Groq is unavailable
-- ✅ **Structured extraction** — automatically pulls out action items, key decisions, and open questions
-- 💬 **Chat with your transcript** — RAG-based Q&A using ChromaDB + HuggingFace embeddings
-- 📄 **Export reports** — download results as PDF or DOCX
-- 🖥️ **Two interfaces** — a Streamlit web UI, and a decoupled FastAPI backend (REST API) for programmatic access
-
----
-
-## 🏗️ Architecture
-
-```
-                 ┌────────────────────┐
-   YouTube URL   │                    │
-   or local file │   Audio Processor  │  (yt-dlp + pydub/ffmpeg)
-   ────────────► │                    │
-                 └─────────┬──────────┘
-                           │  chunked WAV audio
-                           ▼
-                 ┌────────────────────┐
-                 │    Transcriber     │  (Whisper — English)
-                 │                    │  (Sarvam AI — Hindi/Hinglish)
-                 └─────────┬──────────┘
-                           │  transcript text
-              ┌────────────┼─────────────┐
-              ▼            ▼             ▼
-       ┌────────────┐ ┌──────────┐ ┌──────────────┐
-       │ Summarizer │ │ Extractor│ │  RAG Engine  │
-       │   (Groq)   │ │  (Groq)  │ │  (ChromaDB)  │
-       └──────┬─────┘ └────┬─────┘ └──────┬───────┘
-              │            │              │
-              ▼            ▼              ▼
-       ┌─────────────────────────────────────────┐
-       │   Streamlit UI   /   FastAPI Backend     │
-       └─────────────────────────────────────────┘
-```
-
----
-
-## 🧰 Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Audio processing | `yt-dlp`, `pydub`, `ffmpeg` |
-| Speech-to-text | Groq Whisper (hosted), with local OpenAI Whisper fallback |
-| LLM / Summarization | `LangChain`, `Groq` |
-| RAG / Vector search | `ChromaDB`, `sentence-transformers` (`all-MiniLM-L6-v2`) |
-| Backend API | `FastAPI`, `Pydantic`, `uvicorn` |
-| Frontend | `Streamlit` |
-| Document export | `python-docx`, `fpdf2` |
-| Config | `python-dotenv` |
-
----
-
-## 📦 Project Structure
-
-```
-Agent/
-├── app.py                  # Streamlit web app (main UI)
-├── main.py                 # CLI entry point (terminal usage)
-├── backend/
-│   └── main.py              # FastAPI backend (REST API)
-├── core/
-│   ├── transcriber.py        # Whisper + Sarvam AI transcription
-│   ├── summarizer.py         # LLM summarization + title generation
-│   ├── extractor.py          # Action items / decisions / questions
-│   ├── vector_store.py       # ChromaDB vector store setup
-│   └── rag_engine.py         # RAG Q&A chain
-├── utils/
-│   ├── audio_processor.py    # YouTube download + audio chunking
-│   └── export_utils.py       # PDF / DOCX report generation
-├── Requirements.txt
-├── packages.txt             # System packages for cloud deployment (ffmpeg)
-└── .env                     # API keys (not committed — see below)
-```
-
----
+## Tech stack
+Python, Streamlit, FastAPI, LangChain, Groq, ChromaDB, yt-dlp, ffmpeg
