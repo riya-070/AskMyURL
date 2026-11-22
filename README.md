@@ -4,6 +4,22 @@ Paste a YouTube link or upload a recording, and AskMyURL gives you a transcript,
 
 🌐 **Live demo:** [Try AskMyURL](https://askmyurl-x4z5vdmsby8a32uppcuzly.streamlit.app/)
 
+## Screenshots
+
+**Home page**
+
+![Home](home.png)
+
+**Generated title, report download and summary**
+
+![Result](result.png)
+
+![Summary](summary.png)
+
+**Ask questions about the video**
+
+![Ask](ask.png)
+
 ## What it does
 - Takes a YouTube link or an audio/video file
 - Creates a transcript
@@ -29,7 +45,7 @@ Paste a YouTube link or upload a recording, and AskMyURL gives you a transcript,
 ## What makes it useful
 - **Handles long videos:** recordings are split into 8-minute sections and transcribed one by one
 - **Fast when possible:** uses YouTube captions first, and transcribes audio only when captions are missing
-- **Answers from the video:** replies come only from the transcript, so it doesn't make things up
+- **Answers based on the video:** replies come from the transcript, not from guesses
 - **Keeps working if the AI is down:** it switches to a backup and still gives notes and answers
 
 ## Tech stack
